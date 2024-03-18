@@ -1,0 +1,611 @@
+﻿Program.Sub.ScreenSU.Start
+Gui.F_APRVRS_VEND..Create(BaseForm)
+Gui.F_APRVRS_VEND..Caption("PO Approval Originator Based On Vendor Maintenance (6228)")
+Gui.F_APRVRS_VEND..Size(11310,6180)
+Gui.F_APRVRS_VEND..MinX(0)
+Gui.F_APRVRS_VEND..MinY(0)
+Gui.F_APRVRS_VEND..Position(0,0)
+Gui.F_APRVRS_VEND..AlwaysOnTop(False)
+Gui.F_APRVRS_VEND..FontName("Tahoma")
+Gui.F_APRVRS_VEND..FontSize(8.25)
+Gui.F_APRVRS_VEND..ControlBox(True)
+Gui.F_APRVRS_VEND..MaxButton(True)
+Gui.F_APRVRS_VEND..MinButton(True)
+Gui.F_APRVRS_VEND..MousePointer(0)
+Gui.F_APRVRS_VEND..Moveable(True)
+Gui.F_APRVRS_VEND..Sizeable(True)
+Gui.F_APRVRS_VEND..ShowInTaskBar(True)
+Gui.F_APRVRS_VEND..TitleBar(True)
+Gui.F_APRVRS_VEND..Event(UnLoad,Unload)
+Gui.F_APRVRS_VEND.GsGcAppr.Create(GsGridControl)
+Gui.F_APRVRS_VEND.GsGcAppr.Enabled(True)
+Gui.F_APRVRS_VEND.GsGcAppr.Visible(True)
+Gui.F_APRVRS_VEND.GsGcAppr.Zorder(0)
+Gui.F_APRVRS_VEND.GsGcAppr.Size(11100,5010)
+Gui.F_APRVRS_VEND.GsGcAppr.Position(105,630)
+Gui.F_APRVRS_VEND.GsGcAppr.Anchor(15)
+Gui.F_APRVRS_VEND.GsGcAppr.Event(CellValueChanged,GsGcAppr_CellValueChanged)
+Gui.F_APRVRS_VEND.GsGcAppr.Event(KeyPressEnter,GsGcAppr_KeyPressEnter)
+Gui.F_APRVRS_VEND.GsGcAppr.Event(RowCellClick,GsGcAppr_RowCellClick)
+Gui.F_APRVRS_VEND.lbl1.Create(Label,"*** Press ENTER key to save ***",True,2805,195,0,450,195,True,0,"Tahoma",8.25,,0,0)
+Gui.F_APRVRS_VEND.lbl1.BorderStyle(0)
+Gui.F_APRVRS_VEND.lbl1.FontStyle(True,True,False,False,False)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+V.Global.bErrorFound.Declare(Boolean)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare
+V.Local.sIcon.Declare
+
+F.Intrinsic.String.Build("{0}\ART\gss2.ico",V.Caller.GlobalDir,v.Local.sIcon)
+Gui.F_APRVRS_VEND..Icon(V.Local.sIcon)
+
+'Open connection to Company Code Database
+F.ODBC.Connection!conx.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+
+''Open connection to Common Database
+'F.ODBC.Connection!conC.OpenConnection(V.Ambient.Ccon,V.Ambient.CUser,V.Ambient.CPass)
+
+Gui.F_APRVRS_VEND.GsGcAppr.Anchor(15)
+
+F.Intrinsic.Control.CallSub(LoadAprvrs)
+
+Gui.F_APRVRS_VEND..Show
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GAB_6228_APRVRS_VEND.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.Main.End
+
+Program.Sub.Unload.Start
+F.Intrinsic.Control.SetErrorHandler("Unload_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare
+
+F.Intrinsic.Control.If(V.ODBC.conx.State,=,1)
+	F.ODBC.Connection!conx.Close
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.Label("Unload_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GAB_6228_APRVRS_VEND.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+Function.Intrinsic.Control.EndIf
+Program.Sub.Unload.End
+
+Program.Sub.LoadAprvrs.Start
+F.Intrinsic.Control.SetErrorHandler("LoadAprvrs_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare
+V.Local.sSQL.Declare
+
+V.Local.sSQL.Set("select A.ID, A.GS_USER, RTRIM(A.VENDOR) AS VENDOR, B.NAME_VENDOR, A.AMOUNT_LIMIT from GAB_6228_APRVRS_VEND A LEFT JOIN V_VENDOR_MASTER B ON RTRIM(A.VENDOR) = RTRIM(B.VENDOR) order by A.GS_USER;")
+F.Data.DataTable.CreateFromSQL("dtAprvrs","conx",V.Local.sSQL,True)
+F.Data.DataTable.AddColumn("dtAprvrs","Delete","Long")
+
+'Add 1 empty row at the end
+F.Data.DataTable.AddRow("dtAprvrs","ID",0,"GS_USER","","VENDOR","","NAME_VENDOR","","AMOUNT_LIMIT",0.00)
+
+Gui.F_APRVRS_VEND.GsGcAppr.SuspendLayout
+
+Gui.F_APRVRS_VEND.GsGcAppr.AddGridviewFromDatatable("gvAprvrs","dtAprvrs")
+Gui.F_APRVRS_VEND.GsGcAppr.MainView("gvAprvrs")
+
+Gui.F_APRVRS_VEND.GsGcAppr.SetGridviewProperty("gvAprvrs","ShowGroupPanel",True)
+Gui.F_APRVRS_VEND.GsGcAppr.SetGridviewProperty("gvAprvrs","AllowSort",True)
+Gui.F_APRVRS_VEND.GsGcAppr.SetGridviewProperty("gvAprvrs","AllowFilter",True)
+Gui.F_APRVRS_VEND.GsGcAppr.SetGridviewProperty("gvAprvrs","EnableAppearanceOddRow",True)
+
+'Set Visibility of Column
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","ID","Visible",False)
+
+'Header Horizontal Alignment
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","GS_USER","HeaderHAlignment","Center")
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","VENDOR","HeaderHAlignment","Center")
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","NAME_VENDOR","HeaderHAlignment","Center")
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","AMOUNT_LIMIT","HeaderHAlignment","Center")
+
+'Header Caption
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","GS_USER","Caption","User Name")
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","VENDOR","Caption","Vendor")
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","NAME_VENDOR","Caption","Vendor Name")
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","AMOUNT_LIMIT","Caption","PO Amt Limit")
+
+'Header Font Bold
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","GS_USER","HeaderFontBold",True)
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","VENDOR","HeaderFontBold",True)
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","NAME_VENDOR","HeaderFontBold",True)
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","AMOUNT_LIMIT","HeaderFontBold",True)
+
+'Min Width
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","GS_USER","MinWidth","100")
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","VENDOR","MinWidth","100")
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","NAME_VENDOR","MinWidth","300")
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","AMOUNT_LIMIT","MinWidth","150")
+
+'Allow Edit
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","GS_USER","AllowEdit",True)
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","VENDOR","AllowEdit",True)
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","NAME_VENDOR","AllowEdit",False)
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","AMOUNT_LIMIT","AllowEdit",True)
+
+'Read Only
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","GS_USER","ReadOnly",False)
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","VENDOR","ReadOnly",False)
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","NAME_VENDOR","ReadOnly",False)
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","AMOUNT_LIMIT","ReadOnly",False)
+
+''CellBackColor
+'Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","GS_USER","CellBackColor",V.Color.LtBlue)
+'Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","VENDOR","CellBackColor",V.Color.LtBlue)
+'Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","AMOUNT_LIMIT","CellBackColor",V.Color.LtBlue)
+
+'AllowFocus
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","NAME_VENDOR","AllowFocus",False)
+
+'TabStop
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","NAME_VENDOR","TabStop",False)
+
+'Display Custom
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","AMOUNT_LIMIT","DisplayCustomNumeric","##,###,##0.00")
+
+'Add column
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","Delete","ShowCaption",False)
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","Delete","AllowEdit",False)
+Gui.F_APRVRS_VEND.GsGcAppr.SetColumnProperty("gvAprvrs","Delete","MinWidth","50")
+Gui.F_APRVRS_VEND.GsGcAppr.ColumnEdit("gvAprvrs","Delete","EditorButton","Delete")
+
+'Add Context Menu to the grid
+Gui.F_APRVRS_VEND..ContextMenuCreate("ctxGvAprvrs")
+Gui.F_APRVRS_VEND.GsGcAppr.ContextMenuAttach("ctxGvAprvrs")
+
+Gui.F_APRVRS_VEND..ContextMenuAddItem("ctxGvAprvrs","Export",0,"Export")
+
+Gui.F_APRVRS_VEND..ContextMenuSetItemEventHandler("ctxGvAprvrs","Export","GvAprvrs_ContextMenuExport")
+
+
+Gui.F_APRVRS_VEND.GsGcAppr.ResumeLayout
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("LoadAprvrs_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GAB_6228_APRVRS_VEND.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.LoadAprvrs.End
+
+Program.Sub.GvAprvrs_ContextMenuExport.Start
+F.Intrinsic.Control.SetErrorHandler("GvAprvrs_ContextMenuExport_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare
+V.Local.sFileExport.Declare
+V.Local.bExcel.Declare
+V.Local.sMsg.Declare
+
+F.Automation.MSExcel.CheckPresence(V.Local.bExcel)
+F.Intrinsic.String.Format(V.Ambient.Date,"YYYYMMDD",V.Local.sMsg)
+
+F.Intrinsic.Control.If(V.Local.bExcel,=,True)
+	F.Intrinsic.UI.ShowSaveFileDialog("","*.xlsx|",V.Local.sFileExport)
+F.Intrinsic.Control.Else
+	F.Intrinsic.UI.ShowSaveFileDialog("","*.csv|",V.Local.sFileExport)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.If(V.Local.sFileExport,<>,"***CANCEL***")
+	F.Intrinsic.Control.If(V.Local.bExcel,=,True)
+		F.Intrinsic.String.Concat(V.Local.sFileExport,".xlsx",V.Local.sFileExport)
+		Gui.F_APRVRS_VEND.GsGcAppr.Export(V.Local.sFileExport,"xlsx")
+	F.Intrinsic.Control.Else
+		F.Intrinsic.String.Concat(V.Local.sFileExport,".csv",V.Local.sFileExport)
+		Gui.F_APRVRS_VEND.GsGcAppr.Export(V.Local.sFileExport,"csv")
+	F.Intrinsic.Control.EndIf
+	F.Intrinsic.String.Concat("Grid exported to ",V.Local.sFileExport,V.Local.sMsg)
+	F.Intrinsic.UI.Msgbox(V.Local.sMsg)
+	F.Intrinsic.Task.ShellExec(0,"",V.Local.sFileExport,"","",1)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("GvAprvrs_ContextMenuExport_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GAB_6228_APRVRS_VEND.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.GvAprvrs_ContextMenuExport.End
+
+Program.Sub.GsGcAppr_CellValueChanged.Start
+F.Intrinsic.Control.SetErrorHandler("GsGcAppr_CellValueChanged_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare
+
+V.Global.bErrorFound.Set(False)
+F.Intrinsic.Control.SelectCase(V.Args.Column.UCase)
+	F.Intrinsic.Control.CaseAny("GS_USER")
+		F.Intrinsic.Control.If(V.Args.Value.Trim,<>,"")
+			F.Intrinsic.Control.CallSub(ValidateUsername,"RowIndex",V.Args.RowIndex,"ColName",V.Args.Column,"Username",V.Args.Value.Trim,"OpenBrowser",True)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.CaseAny("VENDOR")
+		F.Intrinsic.Control.If(V.Args.Value.Trim,<>,"")
+			F.Intrinsic.Control.CallSub(ValidateVendor,"RowIndex",V.Args.RowIndex,"ColName",V.Args.Column,"Vendor",V.Args.Value.Trim,"OpenBrowser",True)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.CaseAny("AMOUNT_LIMIT")
+		F.Intrinsic.Control.If(V.Args.Value.Float,<=,0.00)
+			F.Intrinsic.UI.Msgbox("PO Amount Limit is invalid")
+			Gui.F_APRVRS_VEND.GsGcAppr.FocusCell("gvAprvrs",V.Args.RowIndex,3)
+		F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndSelect
+
+F.Intrinsic.Control.If(V.Global.bErrorFound,=,False)
+F.Intrinsic.Control.AndIf(V.DataTable.dtAprvrs(V.Args.RowIndex).GS_USER!FieldValTrim,<>,"")
+F.Intrinsic.Control.AndIf(V.DataTable.dtAprvrs(V.Args.RowIndex).VENDOR!FieldValTrim,<>,"")
+F.Intrinsic.Control.AndIf(V.DataTable.dtAprvrs(V.Args.RowIndex).AMOUNT_LIMIT!FieldVal,>,0.00)
+	F.Intrinsic.Control.CallSub(SaveData,"RowIndex",V.Args.RowIndex)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("GsGcAppr_CellValueChanged_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GAB_6228_APRVRS_VEND.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.GsGcAppr_CellValueChanged.End
+
+Program.Sub.SaveData.Start
+F.Intrinsic.Control.SetErrorHandler("SaveData_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare
+V.Local.sSQL.Declare
+V.Local.sRet.Declare
+
+V.Global.bErrorFound.Set(False)
+
+'User presses enter, verify that all the values in columns are valid
+'Username
+F.Intrinsic.Control.If(V.DataTable.dtAprvrs(V.Args.RowIndex).GS_USER!FieldValTrim,=,"")
+	F.Intrinsic.UI.Msgbox("Username cannot be blank")
+	Gui.F_APRVRS_VEND.GsGcAppr.FocusCell("gvAprvrs",V.Args.RowIndex,0)
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.Else
+	F.Intrinsic.Control.CallSub(ValidateUsername,"RowIndex",V.Args.RowIndex,"ColName","GS_USER","Username",V.DataTable.dtAprvrs(V.Args.RowIndex).GS_USER!FieldValTrim,"OpenBrowser",False)
+	F.Intrinsic.Control.If(V.Global.bErrorFound)
+		F.Intrinsic.Control.ExitSub
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+
+'Vendor
+F.Intrinsic.Control.If(V.DataTable.dtAprvrs(V.Args.RowIndex).VENDOR!FieldValTrim,=,"")
+	F.Intrinsic.UI.Msgbox("Vendor cannot be blank")
+	Gui.F_APRVRS_VEND.GsGcAppr.FocusCell("gvAprvrs",V.Args.RowIndex,1)
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.Else
+	F.Intrinsic.Control.CallSub(ValidateVendor,"RowIndex",V.Args.RowIndex,"ColName","VENDOR","Vendor",V.DataTable.dtAprvrs(V.Args.RowIndex).VENDOR!FieldValTrim,"OpenBrowser",False)
+	F.Intrinsic.Control.If(V.Global.bErrorFound)
+		F.Intrinsic.Control.ExitSub
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+
+'PO Amount Limit
+F.Intrinsic.Control.If(V.DataTable.dtAprvrs(V.Args.RowIndex).AMOUNT_LIMIT!FieldValFloat,<=,0.00)
+	F.Intrinsic.UI.Msgbox("PO Amount Limit must be greater than 0.00")
+	Gui.F_APRVRS_VEND.GsGcAppr.FocusCell("gvAprvrs",V.Args.RowIndex,3)
+	F.Intrinsic.Control.ExitSub
+'F.Intrinsic.Control.Else
+'	F.Intrinsic.Control.CallSub(ValidateAmount,"RowIndex",V.Args.RowIndex,"ColName","AMOUNT_LIMIT","Amount",V.Args.Value.Trim)
+'	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.EndIf
+
+'Validate to ensure there is no duplicate based on GS_USER & VENDOR
+F.Intrinsic.String.Build("select GS_USER, VENDOR from GAB_6228_APRVRS_VEND where GS_USER = '{0}' AND VENDOR = '{1}' AND ID <> {2};",V.DataTable.dtAprvrs(V.Args.RowIndex).GS_USER!FieldValTrim,V.DataTable.dtAprvrs(V.Args.RowIndex).VENDOR!FieldValTrim,V.DataTable.dtAprvrs(V.Args.RowIndex).ID!FieldVal,V.Local.sSQL)
+F.ODBC.Connection!conx.ExecuteAndReturn(V.Local.sSQL,V.Local.sRet)
+F.Intrinsic.Control.If(V.Local.sRet.Trim,<>,"")
+	F.Intrinsic.UI.Msgbox("Username & Vendor combination already exists. Please verify.")
+	Gui.F_APRVRS_VEND.GsGcAppr.FocusCell("gvAprvrs",V.Args.RowIndex,0)
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.EndIf
+
+'------------------------------ Will only reach here if there is no validation error ------------------------------------
+'Save the record to database
+'If the ID is blank then it is a new record that needs to be inserted
+F.Intrinsic.Control.If(V.DataTable.dtAprvrs(V.Args.RowIndex).ID!FieldVal,=,0)
+	F.Intrinsic.String.Build("INSERT INTO GAB_6228_APRVRS_VEND(GS_USER,VENDOR,AMOUNT_LIMIT) VALUES('{0}','{1}',{2})",V.DataTable.dtAprvrs(V.Args.RowIndex).GS_USER!FieldValTrim,V.DataTable.dtAprvrs(V.Args.RowIndex).VENDOR!FieldValTrim,V.DataTable.dtAprvrs(V.Args.RowIndex).AMOUNT_LIMIT!FieldVal,V.Local.sSQL)
+	F.ODBC.Connection!conx.Execute(V.Local.sSQL)
+	'Populate the ID from database to the DataTable
+	F.Intrinsic.String.Build("select ID from GAB_6228_APRVRS_VEND where GS_USER = '{0}' and VENDOR = '{1}'",V.DataTable.dtAprvrs(V.Args.RowIndex).GS_USER!FieldValTrim,V.DataTable.dtAprvrs(V.Args.RowIndex).VENDOR!FieldValTrim,V.Local.sSQL)
+	F.ODBC.Connection!conx.ExecuteAndReturn(V.Local.sSQL,V.Local.sRet)
+	F.Intrinsic.Control.If(V.Local.sRet.Trim,<>,"")
+		F.Data.DataTable.SetValue("dtAprvrs",V.Args.RowIndex,"ID",V.Local.sRet.Long)
+	F.Intrinsic.Control.EndIf
+	
+	F.Data.DataTable.AddRow("dtAprvrs","ID",0,"GS_USER","","VENDOR","","NAME_VENDOR","","AMOUNT_LIMIT",0.00)
+'	Gui.F_APRVRS_VEND.GsGcAppr.SelectRow("gvAprvrs",V.DataTable.dtAprvrs.RowCount--)
+	Gui.F_APRVRS_VEND.GsGcAppr.FocusCell("gvAprvrs",V.DataTable.dtAprvrs.RowCount--,0)
+F.Intrinsic.Control.Else
+	'Update existing record
+	F.Intrinsic.String.Build("UPDATE GAB_6228_APRVRS_VEND SET GS_USER = '{0}', VENDOR = '{1}', AMOUNT_LIMIT = {2} WHERE ID = {3}",V.DataTable.dtAprvrs(V.Args.RowIndex).GS_USER!FieldValTrim,V.DataTable.dtAprvrs(V.Args.RowIndex).VENDOR!FieldValTrim,V.DataTable.dtAprvrs(V.Args.RowIndex).AMOUNT_LIMIT!FieldVal,V.DataTable.dtAprvrs(V.Args.RowIndex).ID!FieldVal,V.Local.sSQL)
+	F.ODBC.Connection!conx.Execute(V.Local.sSQL)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("SaveData_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GAB_6228_APRVRS_VEND.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.SaveData.End
+
+Program.Sub.ValidateUsername.Start
+F.Intrinsic.Control.SetErrorHandler("ValidateUsername_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare
+V.Local.sSQL.Declare
+V.Local.sRet.Declare
+V.Local.sTitles.Declare
+V.Local.iWidths.Declare
+V.Local.iColIndex.Declare
+
+Gui.F_APRVRS_VEND.GsGcAppr.GetColumnIndexByName("gvAprvrs",V.Args.ColName,V.Local.iColIndex)
+
+F.Intrinsic.String.Build("select distinct GS_USER from GAB_6228_APRVRS where GS_USER = '{0}' and MANAGER = 1;",V.Args.Username,V.Local.sSQL)
+F.ODBC.Connection!conx.ExecuteAndReturn(V.Local.sSQL,V.Local.sRet)
+F.Intrinsic.Control.If(V.Local.sRet,=,"")
+	F.Intrinsic.Control.If(V.Args.OpenBrowser)
+		'Open browser
+		F.Intrinsic.UI.SetBrowserHotTypeAhead(True)
+		F.Intrinsic.String.Split("GS_USER*!*MANAGER","*!*",V.Local.sTitles)
+		F.Intrinsic.String.Split("200*!*100","*!*",V.Local.iWidths)
+		F.Intrinsic.UI.Browser("Manager level user list","conx","select GS_USER, MANAGER from GAB_6228_APRVRS where MANAGER = 1 order by GS_USER",V.Local.sTitles,V.Local.iWidths,4000,8000,V.Local.sRet)
+		F.Intrinsic.Control.If(V.Local.sRet,<>,"***CANCEL***")
+			F.Intrinsic.String.Split(V.Local.sRet,"*!*",V.Local.sRet)
+			F.Data.DataTable.SetValue("dtAprvrs",V.Args.RowIndex,V.Args.ColName,V.Local.sRet(0).Trim)
+	'	F.Intrinsic.Control.Else	
+	'		Gui.F_APRVRS_VEND.GsGcAppr.FocusCell("gvAprvrs",V.Args.RowIndex,V.Local.iColIndex)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Else
+		F.Intrinsic.UI.Msgbox("Username is invalid")
+		Gui.F_APRVRS_VEND.GsGcAppr.FocusCell("gvAprvrs",V.Args.RowIndex,V.Local.iColIndex)
+		V.Global.bErrorFound.Set(True)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Label("ValidateUsername_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GAB_6228_APRVRS_VEND.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.ValidateUsername.End
+
+Program.Sub.ValidateVendor.Start
+F.Intrinsic.Control.SetErrorHandler("ValidateVendor_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare
+V.Local.sSQL.Declare
+V.Local.sRet.Declare
+V.Local.sTitles.Declare
+V.Local.iWidths.Declare
+V.Local.iColIndex.Declare
+
+Gui.F_APRVRS_VEND.GsGcAppr.GetColumnIndexByName("gvAprvrs",V.Args.ColName,V.Local.iColIndex)
+
+F.Intrinsic.String.Build("select VENDOR, NAME_VENDOR from V_VENDOR_MASTER where VENDOR = '{0}';",V.Args.Vendor,V.Local.sSQL)
+F.ODBC.Connection!conx.ExecuteAndReturn(V.Local.sSQL,V.Local.sRet)
+F.Intrinsic.Control.If(V.Local.sRet,=,"")
+	F.Intrinsic.Control.If(V.Args.OpenBrowser)
+		'Open browser
+		F.Intrinsic.UI.SetBrowserHotTypeAhead(True)
+		F.Intrinsic.String.Split("VENDOR*!*NAME","*!*",V.Local.sTitles)
+		F.Intrinsic.String.Split("100*!*400","*!*",V.Local.iWidths)
+		F.Intrinsic.UI.Browser("Vendor list","conx","select VENDOR, NAME_VENDOR from V_VENDOR_MASTER where VENDOR <> '' order by NAME_VENDOR",V.Local.sTitles,V.Local.iWidths,6000,10000,V.Local.sRet)
+		F.Intrinsic.Control.If(V.Local.sRet,<>,"***CANCEL***")
+			F.Intrinsic.String.Split(V.Local.sRet,"*!*",V.Local.sRet)
+			F.Data.DataTable.SetValue("dtAprvrs",V.Args.RowIndex,V.Args.ColName,V.Local.sRet(0).Trim,"NAME_VENDOR",V.Local.sRet(1).Trim)
+	'	F.Intrinsic.Control.Else
+	'		Gui.F_APRVRS_VEND.GsGcAppr.FocusCell("gvAprvrs",V.Args.RowIndex,V.Local.iColIndex)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Else
+		F.Intrinsic.UI.Msgbox("Vendor is invalid")
+		Gui.F_APRVRS_VEND.GsGcAppr.FocusCell("gvAprvrs",V.Args.RowIndex,V.Local.iColIndex)
+		V.Global.bErrorFound.Set(True)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Else
+	F.Intrinsic.String.Split(V.Local.sRet,"*!*",V.Local.sRet)
+	F.Data.DataTable.SetValue("dtAprvrs",V.Args.RowIndex,V.Args.ColName,V.Local.sRet(0).Trim,"NAME_VENDOR",V.Local.sRet(1).Trim)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Label("ValidateVendor_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GAB_6228_APRVRS_VEND.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.ValidateVendor.End
+
+Program.Sub.GsGcAppr_KeyPressEnter.Start
+F.Intrinsic.Control.SetErrorHandler("GsGcAppr_KeyPressEnter_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare
+'V.Local.sSQL.Declare
+'V.Local.sRet.Declare
+
+'V.Global.bErrorFound.Set(False)
+
+F.Intrinsic.Control.CallSub(SaveData,"RowIndex",V.Args.RowIndex)
+
+''User presses enter, verify that all the values in columns are valid
+''Username
+'F.Intrinsic.Control.If(V.DataTable.dtAprvrs(V.Args.RowIndex).GS_USER!FieldValTrim,=,"")
+'	F.Intrinsic.UI.Msgbox("Username cannot be blank")
+'	Gui.F_APRVRS_VEND.GsGcAppr.FocusCell("gvAprvrs",V.Args.RowIndex,0)
+'	F.Intrinsic.Control.ExitSub
+'F.Intrinsic.Control.Else
+'	F.Intrinsic.Control.CallSub(ValidateUsername,"RowIndex",V.Args.RowIndex,"ColName","GS_USER","Username",V.DataTable.dtAprvrs(V.Args.RowIndex).GS_USER!FieldValTrim,"OpenBrowser",False)
+'	F.Intrinsic.Control.If(V.Global.bErrorFound)
+'		F.Intrinsic.Control.ExitSub
+'	F.Intrinsic.Control.EndIf
+'F.Intrinsic.Control.EndIf
+
+''Vendor
+'F.Intrinsic.Control.If(V.DataTable.dtAprvrs(V.Args.RowIndex).VENDOR!FieldValTrim,=,"")
+'	F.Intrinsic.UI.Msgbox("Vendor cannot be blank")
+'	Gui.F_APRVRS_VEND.GsGcAppr.FocusCell("gvAprvrs",V.Args.RowIndex,1)
+'	F.Intrinsic.Control.ExitSub
+'F.Intrinsic.Control.Else
+'	F.Intrinsic.Control.CallSub(ValidateVendor,"RowIndex",V.Args.RowIndex,"ColName","VENDOR","Vendor",V.DataTable.dtAprvrs(V.Args.RowIndex).VENDOR!FieldValTrim,"OpenBrowser",False)
+'	F.Intrinsic.Control.If(V.Global.bErrorFound)
+'		F.Intrinsic.Control.ExitSub
+'	F.Intrinsic.Control.EndIf
+'F.Intrinsic.Control.EndIf
+
+''PO Amount Limit
+'F.Intrinsic.Control.If(V.DataTable.dtAprvrs(V.Args.RowIndex).AMOUNT_LIMIT!FieldValFloat,<=,0.00)
+'	F.Intrinsic.UI.Msgbox("PO Amount Limit must be greater than 0.00")
+'	Gui.F_APRVRS_VEND.GsGcAppr.FocusCell("gvAprvrs",V.Args.RowIndex,3)
+'	F.Intrinsic.Control.ExitSub
+''F.Intrinsic.Control.Else
+''	F.Intrinsic.Control.CallSub(ValidateAmount,"RowIndex",V.Args.RowIndex,"ColName","AMOUNT_LIMIT","Amount",V.Args.Value.Trim)
+''	F.Intrinsic.Control.ExitSub
+'F.Intrinsic.Control.EndIf
+
+''Validate to ensure there is no duplicate based on GS_USER & VENDOR
+'F.Intrinsic.String.Build("select GS_USER, VENDOR from GAB_6228_APRVRS_VEND where GS_USER = '{0}' AND VENDOR = '{1}' AND ID <> {2};",V.DataTable.dtAprvrs(V.Args.RowIndex).GS_USER!FieldValTrim,V.DataTable.dtAprvrs(V.Args.RowIndex).VENDOR!FieldValTrim,V.DataTable.dtAprvrs(V.Args.RowIndex).ID!FieldVal,V.Local.sSQL)
+'F.ODBC.Connection!conx.ExecuteAndReturn(V.Local.sSQL,V.Local.sRet)
+'F.Intrinsic.Control.If(V.Local.sRet.Trim,<>,"")
+'	F.Intrinsic.UI.Msgbox("Username & Vendor combination already exists. Please verify.")
+'	Gui.F_APRVRS_VEND.GsGcAppr.FocusCell("gvAprvrs",V.Args.RowIndex,0)
+'	F.Intrinsic.Control.ExitSub
+'F.Intrinsic.Control.EndIf
+
+''------------------------------ Will only reach here if there is no validation error ------------------------------------
+''Save the record to database
+''If the ID is blank then it is a new record that needs to be inserted
+'F.Intrinsic.Control.If(V.DataTable.dtAprvrs(V.Args.RowIndex).ID!FieldVal,=,0)
+'	F.Intrinsic.String.Build("INSERT INTO GAB_6228_APRVRS_VEND(GS_USER,VENDOR,AMOUNT_LIMIT) VALUES('{0}','{1}',{2})",V.DataTable.dtAprvrs(V.Args.RowIndex).GS_USER!FieldValTrim,V.DataTable.dtAprvrs(V.Args.RowIndex).VENDOR!FieldValTrim,V.DataTable.dtAprvrs(V.Args.RowIndex).AMOUNT_LIMIT!FieldVal,V.Local.sSQL)
+'	F.ODBC.Connection!conx.Execute(V.Local.sSQL)
+'	'Populate the ID from database to the DataTable
+'	F.Intrinsic.String.Build("select ID from GAB_6228_APRVRS_VEND where GS_USER = '{0}' and VENDOR = '{1}'",V.DataTable.dtAprvrs(V.Args.RowIndex).GS_USER!FieldValTrim,V.DataTable.dtAprvrs(V.Args.RowIndex).VENDOR!FieldValTrim,V.Local.sSQL)
+'	F.ODBC.Connection!conx.ExecuteAndReturn(V.Local.sSQL,V.Local.sRet)
+'	F.Intrinsic.Control.If(V.Local.sRet.Trim,<>,"")
+'		F.Data.DataTable.SetValue("dtAprvrs",V.Args.RowIndex,"ID",V.Local.sRet.Long)
+'	F.Intrinsic.Control.EndIf
+'	
+'	F.Data.DataTable.AddRow("dtAprvrs","ID",0,"GS_USER","","VENDOR","","NAME_VENDOR","","AMOUNT_LIMIT",0.00)
+''	Gui.F_APRVRS_VEND.GsGcAppr.SelectRow("gvAprvrs",V.DataTable.dtAprvrs.RowCount--)
+'	Gui.F_APRVRS_VEND.GsGcAppr.FocusCell("gvAprvrs",V.DataTable.dtAprvrs.RowCount--,0)
+'F.Intrinsic.Control.Else
+'	'Update existing record
+'	F.Intrinsic.String.Build("UPDATE GAB_6228_APRVRS_VEND SET GS_USER = '{0}', VENDOR = '{1}', AMOUNT_LIMIT = {2} WHERE ID = {3}",V.DataTable.dtAprvrs(V.Args.RowIndex).GS_USER!FieldValTrim,V.DataTable.dtAprvrs(V.Args.RowIndex).VENDOR!FieldValTrim,V.DataTable.dtAprvrs(V.Args.RowIndex).AMOUNT_LIMIT!FieldVal,V.DataTable.dtAprvrs(V.Args.RowIndex).ID!FieldVal,V.Local.sSQL)
+'	F.ODBC.Connection!conx.Execute(V.Local.sSQL)
+'F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("GsGcAppr_KeyPressEnter_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GAB_6228_APRVRS_VEND.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.GsGcAppr_KeyPressEnter.End
+
+'Program.Sub.ValidateAmount.Start
+'F.Intrinsic.Control.SetErrorHandler("ValidateAmount_Err")
+'F.Intrinsic.Control.ClearErrors
+
+'V.Local.sError.Declare
+'V.Local.bIsNumeric.Declare
+'V.Local.iColIndex.Declare
+
+'Gui.F_APRVRS_VEND.GsGcAppr.GetColumnIndexByName("gvAprvrs",V.Args.ColName,V.Local.iColIndex)
+
+'F.Intrinsic.Math.IsNumeric(V.Args.Amount,V.Local.bIsNumeric)
+'F.Intrinsic.Control.If(V.Local.bIsNumeric.Not)
+'	F.Intrinsic.UI.Msgbox("PO Amt Limit is invalid")
+'F.Intrinsic.Control.EndIf
+
+'F.Intrinsic.Control.Label("ValidateAmount_Err")
+'F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+'	Function.Intrinsic.String.Concat("Project: GAB_6228_APRVRS_VEND.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+'	F.Intrinsic.UI.Msgbox(V.Local.sError)
+'	F.Intrinsic.Control.CallSub(Unload)
+'Function.Intrinsic.Control.EndIf
+'Program.Sub.ValidateAmount.End
+
+Program.Sub.GsGcAppr_RowCellClick.Start
+F.Intrinsic.Control.SetErrorHandler("GsGcAppr_RowCellClick_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare
+
+F.Intrinsic.Control.SelectCase(V.Args.Column.UCase)
+	F.Intrinsic.Control.CaseAny("DELETE")
+		F.Intrinsic.Control.If(V.DataTable.dtAprvrs(V.Args.RowIndex).ID!FieldVal,<>,0)
+			F.Intrinsic.Control.CallSub(DeleteRowData,"RowIndex",V.Args.RowIndex)
+		F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndSelect
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("GsGcAppr_RowCellClick_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GAB_6228_APRVRS_VEND.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.GsGcAppr_RowCellClick.End
+
+Program.Sub.DeleteRowData.Start
+F.Intrinsic.Control.SetErrorHandler("DeleteRowData_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare
+V.Local.sSQL.Declare
+
+F.Intrinsic.String.Build("DELETE FROM GAB_6228_APRVRS_VEND WHERE ID = {0}",V.DataTable.dtAprvrs(V.Args.RowIndex).ID!FieldVal,V.Local.sSQL)
+F.ODBC.Connection!conx.Execute(V.Local.sSQL)
+
+'Remove the row from the DataTable
+F.Data.DataTable.DeleteRow("dtAprvrs",V.Args.RowIndex)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("DeleteRowData_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GAB_6228_APRVRS_VEND.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.DeleteRowData.End
+
+Program.Sub.Comments.Start
+${$5$}$3.0.0.0$}$1
+${$6$}$tdjohan$}$20210129084918340$}$8rAQhOSvlohpQhMDm1j544LwmwXnRbkhwronOQraohNw4Q4jsEQXBIsdwjioMVXUOW3Nu+v8OYQ=
+Program.Sub.Comments.End
