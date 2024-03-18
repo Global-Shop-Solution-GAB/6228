@@ -1,0 +1,16 @@
+PO %PO%*!*Hi Team,
+
+I'm pleased to send you this order PO (%PO%) expected ETD (%ETD LINE%)
+
+Thanks so much for your confirmation by Proform Invoice or Sales Order accordingly or counter-sign PO then send back to us.
+Looking forward to hearing your feedback ASAP.
+
+We are now requiring the PO confirmation from supplier by one of these ways:
+1/ Suppliers sign PO ("Supplier's confirmation" at the bottom) of CMI and send us a scanned copy via email.
+2/ Suppliers sign PO of CMI and PI (for advance payment request) and send us both documents via email.
+3/ Suppliers sign PO of CMI and other forms of PO acknowledgement following supplier's template and send us both documents via email.
+
+
+Best regards,
+
+%BUYER%
